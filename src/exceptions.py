@@ -24,6 +24,10 @@ class InvalidTokenException(AuthException):
     detail = "Неверный токен"
 
 
+class ExpiredTokenException(AuthException):
+    detail = "Токен истёк"
+
+
 class AuthHTTPException(HTTPException):
     status_code = 500
     detail = None

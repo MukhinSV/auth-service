@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from src.config import settings
 from src.exceptions import PasswordNotConfirmedException, \
     UserAlreadyExistsException, WrongEmailOrPasswordException, \
-    InvalidTokenException
+    InvalidTokenException, ExpiredTokenException
 from src.schemas.roles import RoleRequest
 from src.schemas.users import UserRegisterRequest, User, UserRegister, \
     UserUpdatePartly, UserLoginRequest
@@ -55,7 +55,7 @@ class AuthService(BaseService):
     def create_refresh_token(self, data: dict) -> str:
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + timedelta(
-            hours=settings.REFRESH_TOKEN_EXPIRE_HOURS
+            minutes=settings.REFRESH_TOKEN_EXPIRE_HOURS
         )
         to_encode |= {"exp": expire}
         return self.create_token(to_encode)
@@ -66,6 +66,8 @@ class AuthService(BaseService):
             return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=settings.JWT_ALGORITHM)
         except jwt.exceptions.DecodeError:
             raise InvalidTokenException
+        except jwt.exceptions.ExpiredSignatureError:
+            raise ExpiredTokenException
 
     async def register(self, user_data: UserRegisterRequest) -> User:
         self.check_password_confirmation(
