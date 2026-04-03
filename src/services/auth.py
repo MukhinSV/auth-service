@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 
 import jwt
+from fastapi import Response
 from passlib.context import CryptContext
 
 from src.config import settings
@@ -15,6 +16,10 @@ from src.services.base import BaseService
 
 class AuthService(BaseService):
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    access_cookie_key = "access_token"
+    refresh_cookie_key = "refresh_token"
+    access_token_type = "access"
+    refresh_token_type = "refresh"
 
     @staticmethod
     def check_password_confirmation(
@@ -49,15 +54,15 @@ class AuthService(BaseService):
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-        to_encode |= {"exp": expire}
+        to_encode |= {"exp": expire, "type": self.access_token_type}
         return self.create_token(to_encode)
 
     def create_refresh_token(self, data: dict) -> str:
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.REFRESH_TOKEN_EXPIRE_HOURS
+            hours=settings.REFRESH_TOKEN_EXPIRE_HOURS
         )
-        to_encode |= {"exp": expire}
+        to_encode |= {"exp": expire, "type": self.refresh_token_type}
         return self.create_token(to_encode)
 
     @staticmethod
@@ -68,6 +73,61 @@ class AuthService(BaseService):
             raise InvalidTokenException
         except jwt.exceptions.ExpiredSignatureError:
             raise ExpiredTokenException
+
+    def decode_access_token(self, token: str) -> dict:
+        payload = self.decode_token(token)
+        if payload.get("type") != self.access_token_type:
+            raise InvalidTokenException
+        return payload
+
+    def decode_refresh_token(self, token: str) -> dict:
+        payload = self.decode_token(token)
+        if payload.get("type") != self.refresh_token_type:
+            raise InvalidTokenException
+        return payload
+
+    def issue_tokens(self, user_id: int) -> dict[str, str]:
+        return {
+            "access_token": self.create_access_token({"user_id": user_id}),
+            "refresh_token": self.create_refresh_token({"user_id": user_id}),
+        }
+
+    @staticmethod
+    def _set_cookie(
+            response: Response,
+            key: str,
+            value: str,
+            max_age: int,
+    ) -> None:
+        response.set_cookie(
+            key=key,
+            value=value,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=max_age,
+            path="/",
+        )
+
+    @classmethod
+    def set_auth_cookies(cls, response: Response, tokens: dict[str, str]) -> None:
+        cls._set_cookie(
+            response=response,
+            key=cls.access_cookie_key,
+            value=tokens["access_token"],
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+        cls._set_cookie(
+            response=response,
+            key=cls.refresh_cookie_key,
+            value=tokens["refresh_token"],
+            max_age=settings.REFRESH_TOKEN_EXPIRE_HOURS * 60 * 60,
+        )
+
+    @classmethod
+    def clear_auth_cookies(cls, response: Response) -> None:
+        response.delete_cookie(cls.access_cookie_key, path="/")
+        response.delete_cookie(cls.refresh_cookie_key, path="/")
 
     async def register(self, user_data: UserRegisterRequest) -> User:
         self.check_password_confirmation(
@@ -102,6 +162,8 @@ class AuthService(BaseService):
             raise WrongEmailOrPasswordException
         if not self.verify_password(user_data.password, user.hashed_password):
             raise WrongEmailOrPasswordException
-        access_token = self.create_access_token({"user_id": user.id})
-        refresh_token = self.create_refresh_token({"user_id": user.id})
-        return {"access_token": access_token, "refresh_token": refresh_token}
+        return self.issue_tokens(user.id)
+
+    def refresh(self, refresh_token: str) -> dict[str, str]:
+        refresh_token_data = self.decode_refresh_token(refresh_token)
+        return self.issue_tokens(refresh_token_data["user_id"])

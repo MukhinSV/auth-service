@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
-from src.dependencies import DBDep
+from src.dependencies import DBDep, get_refresh_token, get_current_user_id
 from src.exceptions import PasswordNotConfirmedException, \
     PasswordNotConfirmedHTTPException, UserAlreadyExistsException, \
     UserAlreadyExistsHTTPException, WrongEmailOrPasswordException, \
-    WrongEmailOrPasswordHTTPException
+    WrongEmailOrPasswordHTTPException, InvalidTokenException, \
+    InvalidTokenHTTPException, ExpiredTokenException, \
+    UserUnauthorisedHTTPException
 from src.schemas.users import UserRegisterRequest, UserLoginRequest
 from src.services.auth import AuthService
 
@@ -14,7 +16,8 @@ router = APIRouter(prefix="/auth", tags=["Аутентификация и авт
 @router.post("/register", summary="Регистрация")
 async def register(db: DBDep, user_data: UserRegisterRequest):
     try:
-        return await AuthService(db).register(user_data)
+        await AuthService(db).register(user_data)
+        return {"detail": "Успешная регистрация"}
     except PasswordNotConfirmedException:
         raise PasswordNotConfirmedHTTPException
     except UserAlreadyExistsException:
@@ -25,15 +28,28 @@ async def register(db: DBDep, user_data: UserRegisterRequest):
 async def login(db: DBDep, user_data: UserLoginRequest, response: Response):
     try:
         tokens = await AuthService(db).login(user_data)
-        response.set_cookie("access_token", tokens["access_token"])
-        response.set_cookie( "refresh_token", tokens["refresh_token"])
-        return tokens
+        AuthService.set_auth_cookies(response, tokens)
+        return {"detail": "Успешный вход"}
     except WrongEmailOrPasswordException:
         raise WrongEmailOrPasswordHTTPException
 
 
-@router.post("/logout", summary="Выход")
+@router.post("/refresh", summary="Обновление токенов")
+async def refresh_tokens(
+        response: Response,
+        refresh_token: str = Depends(get_refresh_token),
+):
+    try:
+        tokens = AuthService().refresh(refresh_token)
+        AuthService.set_auth_cookies(response, tokens)
+        return {"detail": "Токены обновлены"}
+    except InvalidTokenException:
+        raise InvalidTokenHTTPException
+    except ExpiredTokenException:
+        raise UserUnauthorisedHTTPException
+
+
+@router.post("/logout", summary="Выход", dependencies=[Depends(get_current_user_id)])
 async def logout(response: Response):
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    AuthService.clear_auth_cookies(response)
     return {"detail": "Успешный выход"}

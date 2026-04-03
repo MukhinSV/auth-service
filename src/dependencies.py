@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, Request, Response
+from fastapi import Depends, Request
 
 from src.database import async_session_maker
 from src.exceptions import UserUnauthorisedHTTPException, \
@@ -12,43 +12,27 @@ from src.utils.db_manager import DBManager
 
 
 def get_access_token(request: Request) -> str:
-    token = request.cookies.get("access_token", None)
+    token = request.cookies.get(AuthService.access_cookie_key, None)
     if not token:
         raise UserUnauthorisedHTTPException
     return token
 
 
 def get_refresh_token(request: Request) -> str:
-    token = request.cookies.get("refresh_token", None)
+    token = request.cookies.get(AuthService.refresh_cookie_key, None)
     if not token:
         raise UserUnauthorisedHTTPException
     return token
 
 
-def get_current_user_id(
-        response: Response,
-        access_token: str = Depends(get_access_token),
-        refresh_token: str = Depends(get_refresh_token),
-) -> int:
+def get_current_user_id(access_token: str = Depends(get_access_token)) -> int:
     try:
-        access_token_data = AuthService().decode_token(access_token)
+        access_token_data = AuthService().decode_access_token(access_token)
         return access_token_data["user_id"]
     except InvalidTokenException:
         raise InvalidTokenHTTPException
     except ExpiredTokenException:
-        try:
-            refresh_token_data = AuthService().decode_token(refresh_token)
-            new_access_token = AuthService().create_access_token(
-                {"user_id": refresh_token_data["user_id"]})
-            new_refresh_token = AuthService().create_refresh_token(
-                {"user_id": refresh_token_data["user_id"]})
-            response.set_cookie("access_token", new_access_token)
-            response.set_cookie("refresh_token", new_refresh_token)
-            return refresh_token_data["user_id"]
-        except InvalidTokenException:
-            raise InvalidTokenHTTPException
-        except ExpiredTokenException:
-            raise UserUnauthorisedHTTPException
+        raise UserUnauthorisedHTTPException
 
 
 async def check_admin(
