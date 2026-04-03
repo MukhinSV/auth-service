@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class UserRegisterRequest(BaseModel):
@@ -7,7 +7,7 @@ class UserRegisterRequest(BaseModel):
     patronymic: str
     email: EmailStr
     password: str
-    repeated_password: str
+    password_confirmation: str
 
 
 class UserRegister(BaseModel):
@@ -16,6 +16,14 @@ class UserRegister(BaseModel):
     patronymic: str
     email: EmailStr
     hashed_password: str
+
+
+class UserUpdatePartly(BaseModel):
+    firstname: str | None = None
+    lastname: str | None = None
+    patronymic: str | None = None
+    email: EmailStr | None = None
+    is_active: bool | None = None
 
 
 class UserLoginRequest(BaseModel):
@@ -29,3 +37,9 @@ class User(BaseModel):
     lastname: str
     patronymic: str
     email: EmailStr
+    is_active: bool
+    model_config = ConfigDict(from_attributes=True)
+
+class UserWithHashedPassword(User):
+    hashed_password: str
+    model_config = ConfigDict(from_attributes=True)
