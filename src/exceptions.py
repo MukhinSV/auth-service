@@ -28,6 +28,26 @@ class ExpiredTokenException(AuthException):
     detail = "Токен истёк"
 
 
+class NoDataForUpdateException(AuthException):
+    detail = "Некорректные данные"
+
+
+class UserNotFoundException(AuthException):
+    detail = "Пользоваетль не найден"
+
+
+class RoleNotFoundException(AuthException):
+    detail = "Роль не найдена"
+
+
+class RoleCanNotBeDeletedException(AuthException):
+    detail = "Эта роль не может быть удалена"
+
+
+class RoleAlreadyExistsException(AuthException):
+    detail = "Такая роль уже существует"
+
+
 class AuthHTTPException(HTTPException):
     status_code = 500
     detail = None
@@ -67,3 +87,28 @@ class InvalidTokenHTTPException(AuthHTTPException):
 class AccessDeniedHTTPException(AuthHTTPException):
     status_code = 403
     detail = "Доступ запрещён"
+
+
+class NoDataForUpdateHTTPException(AuthHTTPException):
+    status_code = 422
+    detail = "Некорректные данные"
+
+
+class UserNotFoundHTTPException(AuthHTTPException):
+    status_code = 404
+    detail = "Пользоваетль не найден"
+
+
+class RoleNotFoundHTTPException(AuthHTTPException):
+    status_code = 404
+    detail = "Роль не найдена"
+
+
+class RoleCanNotBeDeletedHTTPException(AuthHTTPException):
+    status_code = 400
+    detail = "Эта роль не может быть удалена"
+
+
+class RoleAlreadyExistsHTTPException(AuthHTTPException):
+    status_code = 409
+    detail = "Такая роль уже существует"

@@ -8,9 +8,9 @@ from src.config import settings
 from src.exceptions import PasswordNotConfirmedException, \
     UserAlreadyExistsException, WrongEmailOrPasswordException, \
     InvalidTokenException, ExpiredTokenException
-from src.schemas.roles import RoleRequest
 from src.schemas.users import UserRegisterRequest, User, UserRegister, \
-    UserUpdatePartly, UserLoginRequest
+    UserUpdatePartlyForAdmin, UserLoginRequest
+from src.schemas.users_roles import UsersRolesRequest
 from src.services.base import BaseService
 
 
@@ -30,7 +30,7 @@ class AuthService(BaseService):
             raise PasswordNotConfirmedException
 
     async def check_user_existence(self, email: str) -> User:
-        user = await self.db.users.get_one_or_none(email=email)
+        user = await self.db.users.get_one_or_none_with_rels(email=email)
         if user and user.is_active:
             raise UserAlreadyExistsException
         return user
@@ -142,13 +142,15 @@ class AuthService(BaseService):
                 hashed_password=self.hash_password(user_data.password)
             )
             user_res = await self.db.users.add(user_data_for_add)
-            await self.db.roles.add(
-                RoleRequest(user_id=user_res.id),
-                exclude_unset=True
-            )
+            role = await self.db.roles.get_one_or_none(role="USER")
+            user_role_id = role.id
+            await self.db.users_roles.add(UsersRolesRequest(
+                user_id=user_res.id,
+                role_id=user_role_id
+            ))
         else:
             user_res = await self.db.users.update(
-                UserUpdatePartly(is_active=True),
+                UserUpdatePartlyForAdmin(is_active=True),
                 exclude_unset=True,
                 id=user.id
             )
@@ -158,6 +160,8 @@ class AuthService(BaseService):
     async def login(self, user_data: UserLoginRequest) -> dict:
         user = await self.db.users.get_user_with_hashed_password(
             email=user_data.email)
+        if not user.is_active:
+            raise WrongEmailOrPasswordException
         if not user:
             raise WrongEmailOrPasswordException
         if not self.verify_password(user_data.password, user.hashed_password):

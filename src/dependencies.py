@@ -8,6 +8,7 @@ from src.exceptions import UserUnauthorisedHTTPException, \
     AccessDeniedHTTPException, ExpiredTokenException
 from src.services.admin import AdminService
 from src.services.auth import AuthService
+from src.services.users import UserService
 from src.utils.db_manager import DBManager
 
 
@@ -39,8 +40,8 @@ async def check_admin(
         db: DBDep,
         user_id: int = Depends(get_current_user_id)
 ) -> None:
-    role = await AdminService(db).get_role(user_id)
-    if role.role != "ADMIN":
+    user = await UserService(db).get_user_with_rels(user_id)
+    if user.roles.role != "ADMIN":
         raise AccessDeniedHTTPException
 
 

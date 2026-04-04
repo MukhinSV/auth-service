@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, Response
+from starlette import status
+from starlette.responses import JSONResponse
 
 from src.dependencies import DBDep, get_refresh_token, get_current_user_id
 from src.exceptions import PasswordNotConfirmedException, \
@@ -13,7 +15,7 @@ from src.services.auth import AuthService
 router = APIRouter(prefix="/auth", tags=["Аутентификация и авторизация"])
 
 
-@router.post("/register", summary="Регистрация")
+@router.post("/register", summary="Регистрация", status_code=201)
 async def register(db: DBDep, user_data: UserRegisterRequest):
     try:
         await AuthService(db).register(user_data)
@@ -34,7 +36,13 @@ async def login(db: DBDep, user_data: UserLoginRequest, response: Response):
         raise WrongEmailOrPasswordHTTPException
 
 
-@router.post("/refresh", summary="Обновление токенов")
+@router.post("/refresh",
+             summary="Обновление токенов",
+             description="""
+             Обновляет access token, если refresh token ещё не истёк.
+             Если refresh token истёк, пользователь должен заново войти в аккаунт.
+             """
+             )
 async def refresh_tokens(
         response: Response,
         refresh_token: str = Depends(get_refresh_token),

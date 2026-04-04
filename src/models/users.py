@@ -4,6 +4,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database import Base
 
+if typing.TYPE_CHECKING:
+    from src.models.roles import RolesORM
+
 
 class UsersORM(Base):
     __tablename__ = "users"
@@ -15,3 +18,7 @@ class UsersORM(Base):
     email: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str]
     is_active: Mapped[bool] = mapped_column(default=True)
+    roles: Mapped["RolesORM"] = relationship(
+        back_populates="users",
+        secondary="users_roles",
+    )
