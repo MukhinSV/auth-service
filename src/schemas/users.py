@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-from src.schemas.roles import Role, RoleResponse
+from src.schemas.roles import RoleResponse
 
 
 class UserRegisterRequest(BaseModel):
@@ -42,6 +42,14 @@ class UserUpdate(BaseModel):
     email: EmailStr
 
 
+class UserUpdateForAdmin(BaseModel):
+    firstname: str
+    lastname: str
+    patronymic: str
+    email: EmailStr
+    is_active: bool
+
+
 class UserLoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -56,6 +64,7 @@ class User(BaseModel):
     is_active: bool
     roles: RoleResponse
     model_config = ConfigDict(from_attributes=True)
+
 
 class UserWithHashedPassword(User):
     hashed_password: str

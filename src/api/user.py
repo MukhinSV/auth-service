@@ -9,6 +9,7 @@ from src.services.users import UserService
 
 router = APIRouter(prefix="/user", tags=["Пользователь"])
 
+
 @router.get("", summary="Информация о пользователе")
 async def get_user(db: DBDep, user_id: UserIdDep):
     return await UserService(db).get_user_with_rels(user_id)
@@ -21,7 +22,8 @@ async def update(db: DBDep, user_id: UserIdDep, user_data: UserUpdate):
 
 
 @router.patch("", summary="Обновить данные пользователя частично")
-async def update_partly(db: DBDep, user_id: UserIdDep, user_data: UserUpdatePartly):
+async def update_partly(db: DBDep, user_id: UserIdDep,
+                        user_data: UserUpdatePartly):
     try:
         await UserService(db).update_partly(user_id, user_data)
         return {"detail": "Данные успешно обновленны"}

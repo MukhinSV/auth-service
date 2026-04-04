@@ -48,6 +48,18 @@ class RoleAlreadyExistsException(AuthException):
     detail = "Такая роль уже существует"
 
 
+class PermissionNotFoundException(AuthException):
+    detail = "Разрешение не найдено"
+
+
+class PermissionAlreadyExistsException(AuthException):
+    detail = "Такое разрешение уже существует"
+
+
+class ProductNotFoundException(AuthException):
+    detail = "Товар не найден"
+
+
 class AuthHTTPException(HTTPException):
     status_code = 500
     detail = None
@@ -112,3 +124,18 @@ class RoleCanNotBeDeletedHTTPException(AuthHTTPException):
 class RoleAlreadyExistsHTTPException(AuthHTTPException):
     status_code = 409
     detail = "Такая роль уже существует"
+
+
+class PermissionNotFoundHTTPException(AuthHTTPException):
+    status_code = 404
+    detail = "Разрешение не найдено"
+
+
+class PermissionAlreadyExistsHTTPException(AuthHTTPException):
+    status_code = 409
+    detail = "Такое разрешение уже существует"
+
+
+class ProductNotFoundHTTPException(AuthHTTPException):
+    status_code = 404
+    detail = "Товар не найден"

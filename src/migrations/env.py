@@ -15,7 +15,9 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from src.database import Base
 from src.config import settings
 from src.models.users import UsersORM
+from src.models.permissions import PermissionsORM
 from src.models.roles import RolesORM
+from src.models.roles_permissions import RolesPermissionsORM
 from src.models.users_roles import UsersRolesORM
 
 # this is the Alembic Config object, which provides

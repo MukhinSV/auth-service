@@ -16,7 +16,6 @@ class UserService(BaseService):
         await self.db.users.update(user_data, id=user_id)
         await self.db.commit()
 
-
     async def update_partly(
             self,
             user_id: int,

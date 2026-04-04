@@ -68,7 +68,11 @@ class AuthService(BaseService):
     @staticmethod
     def decode_token(token: str) -> dict:
         try:
-            return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=settings.JWT_ALGORITHM)
+            return jwt.decode(
+                token,
+                settings.JWT_SECRET_KEY,
+                algorithms=settings.JWT_ALGORITHM
+            )
         except jwt.exceptions.DecodeError:
             raise InvalidTokenException
         except jwt.exceptions.ExpiredSignatureError:
@@ -110,7 +114,11 @@ class AuthService(BaseService):
         )
 
     @classmethod
-    def set_auth_cookies(cls, response: Response, tokens: dict[str, str]) -> None:
+    def set_auth_cookies(
+            cls,
+            response: Response,
+            tokens: dict[str, str]
+    ) -> None:
         cls._set_cookie(
             response=response,
             key=cls.access_cookie_key,
@@ -134,8 +142,8 @@ class AuthService(BaseService):
             user_data.password,
             user_data.password_confirmation
         )
-        user = await self.check_user_existence(user_data.email)
-        if user is None:
+        existing_user = await self.check_user_existence(user_data.email)
+        if existing_user is None:
             user_data_for_add = UserRegister(
                 **user_data.model_dump(
                     exclude={"password", "password_confirmation"}),
@@ -149,20 +157,21 @@ class AuthService(BaseService):
                 role_id=user_role_id
             ))
         else:
-            user_res = await self.db.users.update(
+            await self.db.users.update(
                 UserUpdatePartlyForAdmin(is_active=True),
                 exclude_unset=True,
-                id=user.id
+                id=existing_user.id
             )
         await self.db.commit()
-        return user_res
+        user_id = user_res.id if existing_user is None else existing_user.id
+        return await self.db.users.get_one_or_none_with_rels(id=user_id)
 
     async def login(self, user_data: UserLoginRequest) -> dict:
         user = await self.db.users.get_user_with_hashed_password(
             email=user_data.email)
-        if not user.is_active:
-            raise WrongEmailOrPasswordException
         if not user:
+            raise WrongEmailOrPasswordException
+        if not user.is_active:
             raise WrongEmailOrPasswordException
         if not self.verify_password(user_data.password, user.hashed_password):
             raise WrongEmailOrPasswordException

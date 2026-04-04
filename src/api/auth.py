@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, Response
-from starlette import status
-from starlette.responses import JSONResponse
+from fastapi import APIRouter, Body, Depends, Response, Request
+from fastapi.openapi.models import Example
 
 from src.dependencies import DBDep, get_refresh_token, get_current_user_id
 from src.exceptions import PasswordNotConfirmedException, \
@@ -27,7 +26,36 @@ async def register(db: DBDep, user_data: UserRegisterRequest):
 
 
 @router.post("/login", summary="Вход")
-async def login(db: DBDep, user_data: UserLoginRequest, response: Response):
+async def login(
+        db: DBDep,
+        response: Response,
+        request: Request,
+        user_data: UserLoginRequest = Body(
+            openapi_examples={
+                "admin": Example(
+                    summary="Вход как ADMIN",
+                    value={
+                        "email": "admin@example.com",
+                        "password": "Admin123!",
+                    },
+                ),
+                "manager": Example(
+                    summary="Вход как MANAGER",
+                    value={
+                        "email": "manager@example.com",
+                        "password": "Manager123!",
+                    },
+                ),
+                "user": Example(
+                    summary="Вход как USER",
+                    value={
+                        "email": "user@example.com",
+                        "password": "User123!",
+                    },
+                ),
+            }
+        )
+):
     try:
         tokens = await AuthService(db).login(user_data)
         AuthService.set_auth_cookies(response, tokens)
@@ -57,7 +85,8 @@ async def refresh_tokens(
         raise UserUnauthorisedHTTPException
 
 
-@router.post("/logout", summary="Выход", dependencies=[Depends(get_current_user_id)])
+@router.post("/logout", summary="Выход",
+             dependencies=[Depends(get_current_user_id)])
 async def logout(response: Response):
     AuthService.clear_auth_cookies(response)
     return {"detail": "Успешный выход"}
