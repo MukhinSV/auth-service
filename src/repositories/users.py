@@ -12,6 +12,19 @@ class UsersRepository(BaseRepository):
     model = UsersORM
     schema = User
 
+    async def get_one_or_none(self, **filter_by) -> BaseModel | None:
+        query = (select(self.model)
+                 .options(
+            selectinload(self.model.roles)
+            .selectinload(RolesORM.permissions)
+        )
+                 .filter_by(**filter_by))
+        result = await self.session.execute(query)
+        model = result.scalars().one_or_none()
+        if not model:
+            return None
+        return self.schema.model_validate(model)
+
     async def get_all_with_rels(self):
         query = select(self.model).options(
             selectinload(self.model.roles).selectinload(RolesORM.permissions)

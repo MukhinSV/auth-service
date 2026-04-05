@@ -6,7 +6,8 @@ from src.exceptions import RoleNotFoundException, UserNotFoundException, \
     RoleCanNotBeDeletedException, RoleCanNotBeDeletedHTTPException, \
     RoleAlreadyExistsHTTPException, PermissionAlreadyExistsHTTPException, \
     PermissionNotFoundException, PermissionNotFoundHTTPException, \
-    NoDataForUpdateException, NoDataForUpdateHTTPException
+    NoDataForUpdateException, NoDataForUpdateHTTPException, \
+    UserAlreadyExistsException, UserAlreadyExistsHTTPException
 from src.schemas.permissions import PermissionRequest, \
     RolePermissionsUpdateRequest
 from src.schemas.roles import RoleRequest
@@ -107,6 +108,8 @@ async def update_user(db: DBDep, user_id: int, user_data: UserUpdateForAdmin):
         await AdminService(db).update_user(user_id, user_data)
     except UserNotFoundException:
         raise UserNotFoundHTTPException
+    except UserAlreadyExistsException:
+        raise UserAlreadyExistsHTTPException
     return {"detail": "Данные пользователя успешно обновлены"}
 
 
@@ -148,6 +151,8 @@ async def update_user_partly(
         raise UserNotFoundHTTPException
     except NoDataForUpdateException:
         raise NoDataForUpdateHTTPException
+    except UserAlreadyExistsException:
+        raise UserAlreadyExistsHTTPException
     return {"detail": "Данные пользователя успешно обновлены"}
 
 

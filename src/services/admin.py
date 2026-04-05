@@ -1,7 +1,7 @@
 from src.exceptions import UserNotFoundException, RoleNotFoundException, \
     RoleCanNotBeDeletedException, RoleAlreadyExistsException, \
     PermissionAlreadyExistsException, PermissionNotFoundException, \
-    NoDataForUpdateException
+    NoDataForUpdateException, UserAlreadyExistsException
 from src.schemas.permissions import Permission, PermissionRequest
 from src.schemas.roles import Role, RoleRequest
 from src.schemas.roles_permissions import RolesPermissionsRequest
@@ -53,6 +53,9 @@ class AdminService(BaseService):
             user_id: int,
             user_data: UserUpdateForAdmin
     ) -> None:
+        user = await self.db.users.get_one_or_none_with_rels(email=user_data.email)
+        if user:
+            raise UserAlreadyExistsException
         user = await self.db.users.get_one_or_none(id=user_id)
         if user is None:
             raise UserNotFoundException
@@ -64,6 +67,9 @@ class AdminService(BaseService):
             user_id: int,
             user_data: UserUpdatePartlyForAdmin
     ) -> None:
+        user = await self.db.users.get_one_or_none_with_rels(email=user_data.email)
+        if user:
+            raise UserAlreadyExistsException
         user = await self.db.users.get_one_or_none(id=user_id)
         if user is None:
             raise UserNotFoundException

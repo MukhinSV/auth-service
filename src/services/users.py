@@ -1,4 +1,4 @@
-from src.exceptions import NoDataForUpdateException
+from src.exceptions import NoDataForUpdateException, UserAlreadyExistsException
 from src.schemas.users import User, UserUpdatePartly, UserUpdate, \
     UserUpdatePartlyForAdmin
 from src.services.base import BaseService
@@ -13,6 +13,9 @@ class UserService(BaseService):
             user_id: int,
             user_data: UserUpdate
     ) -> None:
+        user = await self.db.users.get_one_or_none_with_rels(email=user_data.email)
+        if user:
+            raise UserAlreadyExistsException
         await self.db.users.update(user_data, id=user_id)
         await self.db.commit()
 
@@ -23,6 +26,10 @@ class UserService(BaseService):
     ) -> None:
         if not user_data.model_dump(exclude_unset=True):
             raise NoDataForUpdateException
+        if user_data.email:
+            user = await self.db.users.get_one_or_none_with_rels(email=user_data.email)
+            if user:
+                raise UserAlreadyExistsException
         await self.db.users.update(user_data, exclude_unset=True, id=user_id)
         await self.db.commit()
 

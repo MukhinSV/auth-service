@@ -1,7 +1,8 @@
+from src.fake_db.cart import cart_db
 from src.exceptions import NoDataForUpdateException, ProductNotFoundException
 from src.fake_db.products import products_db
 from src.schemas.products import Product, ProductCreate, ProductUpdate, \
-    ProductUpdatePartly
+    ProductUpdatePartly, AddProductToCartRequest, Cart, CartItem
 
 
 class ProductService:
@@ -57,3 +58,43 @@ class ProductService:
         if product_id not in products_db:
             raise ProductNotFoundException
         del products_db[product_id]
+
+    @staticmethod
+    def add_product_to_cart(
+            user_id: int,
+            product_id: int,
+            cart_item_data: AddProductToCartRequest
+    ) -> Cart:
+        product = products_db.get(product_id)
+        if product is None:
+            raise ProductNotFoundException
+
+        user_cart = cart_db.setdefault(user_id, {})
+        user_cart[product_id] = (
+            user_cart.get(product_id, 0) +
+            cart_item_data.quantity
+        )
+        return ProductService.get_cart(user_id)
+
+    @staticmethod
+    def get_cart(user_id: int) -> Cart:
+        user_cart = cart_db.get(user_id, {})
+        items: list[CartItem] = []
+        total_price = 0.0
+
+        for product_id, quantity in user_cart.items():
+            product = products_db.get(product_id)
+            if product is None:
+                continue
+
+            items.append(
+                CartItem(
+                    product_id=product_id,
+                    name=product["name"],
+                    price=product["price"],
+                    quantity=quantity,
+                )
+            )
+            total_price += product["price"] * quantity
+
+        return Cart(user_id=user_id, items=items, total_price=total_price)

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Response
 
 from src.dependencies import UserIdDep, DBDep
 from src.exceptions import NoDataForUpdateException, \
-    NoDataForUpdateHTTPException
+    NoDataForUpdateHTTPException, UserAlreadyExistsException, \
+    UserAlreadyExistsHTTPException
 from src.schemas.users import UserUpdatePartly, UserUpdate
 from src.services.auth import AuthService
 from src.services.users import UserService
@@ -17,18 +18,25 @@ async def get_user(db: DBDep, user_id: UserIdDep):
 
 @router.put("", summary="Обновить данные пользователя")
 async def update(db: DBDep, user_id: UserIdDep, user_data: UserUpdate):
-    await UserService(db).update(user_id, user_data)
+    try:
+        await UserService(db).update(user_id, user_data)
+    except UserAlreadyExistsException:
+        raise UserAlreadyExistsHTTPException
     return {"detail": "Данные успешно обновленны"}
 
 
 @router.patch("", summary="Обновить данные пользователя частично")
-async def update_partly(db: DBDep, user_id: UserIdDep,
-                        user_data: UserUpdatePartly):
+async def update_partly(
+        db: DBDep, user_id: UserIdDep,
+        user_data: UserUpdatePartly
+):
     try:
         await UserService(db).update_partly(user_id, user_data)
         return {"detail": "Данные успешно обновленны"}
     except NoDataForUpdateException:
         raise NoDataForUpdateHTTPException
+    except UserAlreadyExistsException:
+        raise UserAlreadyExistsHTTPException
 
 
 @router.delete("",

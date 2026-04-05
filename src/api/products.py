@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 
-from src.dependencies import require_permission
+from src.dependencies import require_permission, require_roles, UserIdDep
 from src.exceptions import NoDataForUpdateException, \
     NoDataForUpdateHTTPException, ProductNotFoundHTTPException
 from src.schemas.products import ProductCreate, ProductUpdate, \
-    ProductUpdatePartly
+    ProductUpdatePartly, AddProductToCartRequest
 from src.services.products import ProductService, ProductNotFoundException
 
 router = APIRouter(prefix="/products", tags=["Товары"])
@@ -19,12 +19,41 @@ async def get_products():
 
 
 @router.get(
+    "/cart",
+    summary="Посмотреть корзину",
+    dependencies=[Depends(require_roles("USER", "MANAGER", "ADMIN"))]
+)
+async def get_cart(user_id: UserIdDep):
+    return ProductService.get_cart(user_id)
+
+
+@router.get(
     "/{product_id}",
     summary="Получить товар по id"
 )
 async def get_product(product_id: int):
     try:
         return ProductService.get_product(product_id)
+    except ProductNotFoundException:
+        raise ProductNotFoundHTTPException
+
+
+@router.post(
+    "/cart/{product_id}",
+    summary="Добавить товар в корзину",
+    dependencies=[Depends(require_roles("USER", "MANAGER", "ADMIN"))]
+)
+async def add_product_to_cart(
+        product_id: int,
+        cart_item_data: AddProductToCartRequest,
+        user_id: UserIdDep
+):
+    try:
+        return ProductService.add_product_to_cart(
+            user_id,
+            product_id,
+            cart_item_data
+        )
     except ProductNotFoundException:
         raise ProductNotFoundHTTPException
 

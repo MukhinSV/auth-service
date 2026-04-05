@@ -53,6 +53,20 @@ def require_permission(permission_code: str):
     return checker
 
 
+def require_roles(*allowed_roles: str):
+    async def checker(
+            db: DBDep,
+            user_id: int = Depends(get_current_user_id)
+    ) -> None:
+        user = await UserService(db).get_user_with_rels(user_id)
+        if user is None:
+            raise UserUnauthorisedHTTPException
+        if user.roles.role not in allowed_roles:
+            raise AccessDeniedHTTPException
+
+    return checker
+
+
 UserIdDep = Annotated[int, Depends(get_current_user_id)]
 
 
